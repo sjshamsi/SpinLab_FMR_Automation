@@ -9,21 +9,53 @@ class HP_CWG(_InstrumentBase):
         self.VI.write_termination = self.VI.LF
         self.VI.read_termination = self.VI.LF
         self.VI.clear()
+        self.RF_ON = True
+        self.error_codes = {
+            '00': 'NO ERROR.',
+            '01': 'FREQUENCY OUT OF RANGE.',
+            '02': 'FREQUENCY INCR OUT OF RANGE.',
+            '04': 'CANNOT STORE REGISTER 0.',
+            '05': 'STEP SIZE OUT OF RANGE.',
+            '07': 'NUMBER OF STEPS OUT OF RANGE.',
+            '08': 'DWELL OUT OF RANGE.',
+            '09': 'MARKER NUMBER NOT 1-5.',
+            '10': 'START FREQ=STOP FREQ. NO SWEEP.',
+            '11': 'SWEEP SCAN RESULTS IN START FREQUENCY OUT OF RANGE. Truncated sweep will result.',
+            '12': 'SWEEP SCAN RESULTS IN STOP FREQUENCY OUT OF RANGE. Truncated sweep will result.',
+            '13': 'NUMBER OF STEPS ADJUSTED TO GIVE STEP SIZE IN EVEN KHz. Press STEP to see result.',
+            '14': 'STEP SIZE TOO SMALL FOR SPAN. Press STEP to see result (maximum number of steps is 9999).',
+            '15': 'STEP SIZE>SPAN. Step size is set to span.',
+            '16': 'BAND CROSSING IN AUTO SWEEP.',
+            '20': 'INVALID HP-IB CODE.',
+            '21': 'HP-IB DATA WITHOUT VALID PREFIX.',
+            '22': 'INVALID HP-IB ADRESS ENTRY.',
+            '23': 'TALK FUNCTION NOT PROPERLY SPECIFIED.',
+            '24': 'OUTPUT LEVEL OUT OF RANGE.',
+            '90': 'AUTO PEAK MALFUNCTION.',
+            '92': 'RECALL CHECKSUM ERROR.',
+            '95': 'LOSS OF DATA ON POWER UP.',
+            '96': 'MEMORY TEST FAILURE.',
+            '97': 'ROM TEST FAILURE. A2A10.',
+            '98': 'RAM TEST FAILURE. A2A11.',
+            '99': 'RAM NOT FUNCTIONAL AT POWER UP.'
+        }
         
     def __del__(self):
         "We'll reset the HP8673G and turn off the RF output"
         self.VI.clear()
-        self.write('R0')
+        self.rf_output = 'Off'
         super().__del__()
     
     def _frequency_out(self, frq_val, mode, units):
-        valid_units = ['Hz', 'Mz', 'Gz']
+        valid_units = ['Hz', 'KHz', 'MHz', 'GHz']
+
+        frq_val = round(float(frq_val), 5)
         
         if units in valid_units:
-            unit_str = ['HZ', 'MZ', 'GZ'][valid_units == units]
-            self.write('{0} {1} {2}').format(mode, frq_val, unitStr)
+            unit_str = ['HZ', 'KZ', 'MZ', 'GZ'][valid_units.index(units)]
+            self.write('{0} {1} {2}'.format(mode, frq_val, unit_str))
         else:
-            self._log('ERR ', 'Frequency error code. Invalid units! Valid units are "Hz", "Mz", and "Gz".')
+            self._log('ERR ', 'Frequency error code. Invalid units! Valid units are "Hz", "KHz", "MHz", and "GHz".')
             return None
     
     ### Main frequency/Centre frequency (they seem to be the same thing to me) methods
@@ -32,8 +64,10 @@ class HP_CWG(_InstrumentBase):
         return self.query('OK')
     
     @frequency.setter
-    def frequency(self, frq_val, units='Hz'):
+    def frequency(self, frequency):
+        frq_val, units = frequency.split(' ')
         self._frequency_out(frq_val, 'FR', units)
+        self.check_message()
     
     
     ### Start frequency methods
@@ -42,147 +76,143 @@ class HP_CWG(_InstrumentBase):
         return self.query('FA OA')
     
     @start_frequency.setter
-    def start_frequency(self, frq_val, units='Hz'):
+    def start_frequency(self, frequency):
+        frq_val, units = frequency.split(' ')
         self._frequency_out(frq_val, 'FA', units)
-        
-        
+        self.check_message()
+    
+
     ### Stop frequency methods
     @property
     def stop_frequency(self):
-        self.query('FB OA')
+        return self.query('FB OA')
         
     @stop_frequency.setter
-    def stop_frequency(self, frq_val, units='Hz'):
+    def stop_frequency(self, frequency):
+        frq_val, units = frequency.split(' ')
         self._frequency_out(frq_val, 'FB', units)
+        self.check_message()
     
     
     ### Delta frequency methods
     @property
     def delta_frequency(self):
-        self.query('FS OA')
+        return self.query('FS OA')
     
     @delta_frequency.setter
-    def delta_frequency(self, frq_val, units='Hz'):
+    def delta_frequency(self, frequency):
+        frq_val, units = frequency.split(' ')
         self._frequency_out(frq_val, 'FS', units)
+        self.check_message()
         
         
     ### Frequency increment methods
     @property
     def frequency_increment(self):
-        self.query('FI OA')
+        return self.query('FI OA')
     
     @frequency_increment.setter
-    def frequency_increment(self, frq_val, units='Hz'):
+    def frequency_increment(self, frequency):
+        frq_val, units = frequency.split(' ')
         self._frequency_out(frq_val, 'FI', units)
+        self.check_message()
     
     
-    ### Step size methods
+    ### Step size and step number methods
     @property
-    def step_size(self):
-        self.query('FI OA')
-    
-    @frequency_increment.setter
-    def frequency_increment(self, frq_val, units='Hz'):
-        self._frequency_out(frq_val, 'FI', units)
-    
-    
-    def SetRange(self, r):
-        '''
-        Change operating range for output current or voltage
+    def steps(self):
+        return self.query('SPOA')
 
-        Usage :
-            SetRange('Full' / '1/4' / 'AUTO')
-        '''
-        validCodes = ['Full', '1/4', 'AUTO']
-        if r in validCodes:
-            rangeStr = ['1', '4', 'AUTO'][validCodes == r]
-            mode = ['VOLT', 'CURR'][self.query_int('FUNC:MODE?')]
-            self.write('%s:RANG:%s' % (mode, rangeStr))
+    @steps.setter
+    def steps(self, step_num_size):
+        step_val, step_units = step_num_size.split(' ')
+
+        if step_units not in ['Steps', 'Hz', 'KHz', 'MHz', 'GHz']:
+            self._log('ERR ', 'Number of steps/step size error code. Invalid units! Valid units are "Steps", "Hz", "Kz", "Mz", and "Gz".')
+        elif step_units == 'Steps':
+            self.write('SP {} SS'.format(step_val))
         else:
-            self._log('ERR ', 'Range error code')
+            self._frequency_out(step_val, 'SP', step_units)
+        self.check_message()
 
-    def Output(self, out):
-        '''
-        Enable or disable power supply output
 
-        Usage :
-            Output('ON'/'OFF')
-        '''
-        if out in ['ON', 'OFF']:
-            self.write('OUTPUT ' + out)
+    ### RF output mehtods
+    @property
+    def rf_output(self):
+        if self.RF_ON:
+            return 'On'
+        return 'Off'
+    
+    @rf_output.setter
+    def rf_output(self, status):
+        valid_statuses = ['On', 'Off']
+        
+        if status not in valid_statuses:
+            self._log('ERR ', 'RF output error code. Invalid input! Valid inputs are "On" and "Off".')
+        elif ((status == 'On') and self.RF_output) or ((status == 'Off') and (not self.RF_output)):
+            pass
         else:
-            self._log('ERR ', 'Output error code')
+            command = ['R1', 'R0'][valid_statuses.index(status)]
+            print(command)
+            self.write(command)
+            self.RF_ON = not self.RF_ON
 
-    def CurrentMode(self):
-        ''' Changes to constant current operation mode '''
-        self.write('FUNC:MODE CURR')
 
-    def VoltageMode(self):
-        ''' Changes to constant voltage operation mode '''
-        self.write('FUNC:MODE VOLT')
+    ### Level, RANGE, and VERNIER methods
+    @property
+    def level(self):
+        return self.query('LE OA')
+    
+    @level.setter
+    def level(self, value):
+        self.write('LE {} DB'.format(value))
+        self.check_message()
+
+    
+    @property
+    def range(self):
+        return self.query('RA OA')
+    
+    @range.setter
+    def range(self, value):
+        self.write('RA {} DB'.format(value))
+        self.check_message()
+
 
     @property
-    def OperationMode(self):
-        ''' Returns actual operation mode '''
-        modes = ['Constant Voltage', 'Constant Current']
-        return modes[self.query_int('FUNC:MODE?')]
+    def vernier(self):
+        return self.query('VE OA')
+    
+    @vernier.setter
+    def vernier(self, value):
+        self.write('VE {} DB'.format(value))
+        self.check_message()
 
-    def VoltageOut(self, vOut):
-        '''
-        Sets the Output/Protection Voltage
+    
+    def increase_range(self):
+        self.write('RU')
 
-        Usage :
-            VoltageOut(voltage)
-        '''
-        self.write('VOLT %0.4f' % vOut)
+    def decrease_range(self):
+        self.write('RD')
 
+
+    ### Message and error handling methods
     @property
-    def voltage(self):
-        '''
-        On Voltage mode:
-            Sets output voltage or return programed voltage
-        On Current mode:
-            Sets or return protection voltage
-        '''
-        return self.query_float('VOLT?')
+    def message(self):
+        code = self.query('MG')
+        return code, self.error_codes[code]
+    
+    def check_message(self):
+        code, description = self.message
+        if code == '00':
+            return None
+        self._log('ERR ', 'Device message code {0}: {1}'.format(code, description))
+        raise ValueError('Device message code {0}: {1}'.format(code, description))
+    
 
-    @voltage.setter
-    def voltage(self, vOut):
-        self.VoltageOut(vOut)
+    ### Trigger and sweep methods
+    def trigger(self):
+        self.write('TR')
 
-    def CurrentOut(self, cOut):
-        '''
-        Sets the Output/Protection Current
-
-        Usage :
-            CurrentOut(current)
-        '''
-        self.write('CURR %0.4f' % cOut)
-
-    @property
-    def current(self):
-        '''
-        On Voltage mode:
-            Sets or return protection current
-        On Current mode:
-            Sets output current or return programed current
-        '''
-        return self.query_float('CURR?')
-
-    @current.setter
-    def current(self, cOut):
-        self.CurrentOut(cOut)
-
-    def BEEP(self):
-        '''BEEP'''
-        self.write('SYST:BEEP')
-
-    @property
-    def MeasuredVoltage(self):
-        '''Measured Voltage Value'''
-        return self.query_float('MEAS:VOLT?')
-
-    @property
-    def MeasuredCurrent(self):
-        '''Measured Current Value'''
-        return self.query_float('MEAS:CURR?')
+    def configure_trigger(self, command):
+        self.write('CT {}'.format(command))
