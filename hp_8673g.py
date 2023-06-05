@@ -10,6 +10,7 @@ class HP_CWG(_InstrumentBase):
         self.VI.read_termination = self.VI.LF
         self.VI.clear()
         self.RF_ON = True
+        self.SWEEP_MODE = 'Off'
         self.error_codes = {
             '00': 'NO ERROR.',
             '01': 'FREQUENCY OUT OF RANGE.',
@@ -43,7 +44,7 @@ class HP_CWG(_InstrumentBase):
     def __del__(self):
         "We'll reset the HP8673G and turn off the RF output"
         self.VI.clear()
-        self.rf_output = 'Off'
+        self.RF_ON = False
         super().__del__()
     
     def _frequency_out(self, frq_val, mode, units):
@@ -149,7 +150,7 @@ class HP_CWG(_InstrumentBase):
         
         if status not in valid_statuses:
             self._log('ERR ', 'RF output error code. Invalid input! Valid inputs are "On" and "Off".')
-        elif ((status == 'On') and self.RF_output) or ((status == 'Off') and (not self.RF_output)):
+        elif ((status == 'On') and self.RF_ON) or ((status == 'Off') and (not self.RF_ON)):
             pass
         else:
             command = ['R1', 'R0'][valid_statuses.index(status)]
@@ -216,3 +217,21 @@ class HP_CWG(_InstrumentBase):
 
     def configure_trigger(self, command):
         self.write('CT {}'.format(command))
+
+    @property
+    def sweep_mode(self):
+        return self.SWEEP_MODE
+    
+    @sweep_mode.setter
+    def sweep_mode(self, mode):
+        valid_modes = ['Auto', 'Manual', 'Off']
+
+        if mode not in valid_modes:
+            self._log('ERR ', 'Sweep mode error. Invalid input! Valid inputs are "Auto", "Manual", and "Off".')
+        elif ((mode == 'Auto') and (self.SWEEP_MODE == 'Auto')) or ((mode == 'Manual') and (self.SWEEP_MODE == 'Manual')):
+            pass
+        else:
+            self.write('W{}'.format([0, 2, 3][['Off', 'Auto', 'Manual'].index(mode)]))
+
+    def begin_single_sweep(self):
+        self.write('W6')
