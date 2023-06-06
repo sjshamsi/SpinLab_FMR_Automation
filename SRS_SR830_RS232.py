@@ -142,6 +142,17 @@ class SRS_SR830(_InstrumentBase):
         sen_i = _np.abs(_np.array(bins) - vSen).argmin()
         self.write('SENS %d' % sen_i)
 
+    def decrease_sensitivity(self):
+        sen_i = self.query_int('SENS?') + 1
+        if sen_i <= 26:
+            self.write('SENS %d' % sen_i)
+
+    def increase_sensitivity(self):
+        sen_i = self.query_int('SENS?') - 1
+        if sen_i >= 0:
+            self.write('SENS %d' % sen_i)
+
+
     def FilterSlope(self, sl):
         '''
         Set the output filter slope

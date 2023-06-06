@@ -1,8 +1,8 @@
 # Some generic packages we need
 import os
 import time
-import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from datetime import datetime
 
 # Let's import our instrument classes
@@ -33,11 +33,9 @@ class Experiment():
         self.PS.current = 0
         self.LIA = SRS_SR830(ResourceName='ASRL4::INSTR', logFile=self._logFile)
 
-        # Initial experiment parameters here
-        self.parameters = None
-        self.frequency_sweep = None
-        self.field_sweep = None
         self.read_delay = 0.5
+
+        self.welcome()
 
     def __del__(self):
         self._logWrite('CLOSE')
@@ -56,12 +54,10 @@ class Experiment():
     _log = _logWrite
 
     def update_parameters(self):
-        parameters = {
-            'Field Sweep': self.field_sweep,
-            'Frequency Swep': self.frequency_sweep,
+        self.parameters = {
             'PS Output Current (A)': self.PS.MeasuredCurrent,
             'PS Output Voltage (V)': self.PS.MeasuredVoltage,
-            'PS Output Mode (Current/Voltage)': self.PS.OperationMode(),
+            'PS Output Mode (Current/Voltage)': self.PS.OperationMode,
             'SG Frequency': self.SG.frequency,
             'SG RF Output': self.SG.rf_output,
             'SG RF Output Level': self.SG.level,
@@ -69,95 +65,168 @@ class Experiment():
             'LIA Time Constant': self.LIA.TC,
             'Read Delay (s)': self.read_delay,
             'Log File': self._logFile}
-        if not self.parameters:
-            self.parameters = parameters
-        else:
-            self.parameters.update(parameters)
+
 
     def print_parameters(self):
         print('The parameters presently are:\n')
         self.update_parameters()
         for key, val in self.parameters.items():
-            print(key, ':\t', val, '\n')
+            print(key, ':\t', val)
+
 
     def welcome(self):
         print("Welcome to the FMR Experiment!")
         print("You might want to update some experiment parameters.")
         self.print_parameters()
 
-    def begin_sweep(self, constant_parameter='frequency'):
+
+    def multisweep(self, primary_parameter=None, save_dir=None, fields=None, frequencies=None, closefig=True, savefig=False):
         '''constant_parameter can be "frequency" or "field"'''
-        if None in [self.frequency_sweep, self.field_sweep]:
-            print('Set all parameters before beginning sweep.\n')
-            self.print_parameters()
-            return None
-        
-        if constant_parameter not in ['frequency', 'field']:
+        if (frequencies is None) or (fields is None):
             self._log('ERR ', 'Sweep parameter Error! Valid inputs are "frequency" and "field".')
-            print('ERR ', 'Sweep parameter Error! Valid inputs are "frequency" and "field".')
+            print('Error: You must pass in your frequency and field ranges.\n')
             return None
+        if primary_parameter not in ['frequency', 'field']:
+            self._log('ERR ', 'Primary Parameter Error! Choose whether "frequency" or "field" will be primary.')
+            print('Error: Primary Parameter Error! Choose whether "frequency" or "field" will be primary.')
+            return None
+        if save_dir is None:
+            save_dir = self._get_save_dir()
         
-        self.print_parameters()
-        begin_now = self.ask_begin_now()
-
-        if not begin_now:
-            return None
-        if constant_parameter == 'frequency':
-            self.frequency_field()
+        if primary_parameter == 'frequency':
+            for frequency, field_range in zip(frequencies, fields):
+                self.sweep_field(frequency, field_range, save_dir=save_dir, closefig=closefig, savefig=savefig)
         else:
-            self.field_frequency()
-    
-    def ask_begin_now(self):
-        begin_now = input('Do you want to begin sweep (Y/N)?\n')
-        if begin_now not in ['Y', 'N']:
-            print('Must enter either "Y(es)" or "N(o)". Try again.')
-            self.ask_begin_now()
-        return [True, False][['Y', 'N'].index(begin_now)]
-    
-    def frequency_field(self):
-        save_dir = self._get_save_dir()
-        self._current_sweep = self.field2current(self.field_sweep)
-        X_array = []
-        Y_array = []
-        for frequency in self.frequency_sweep:
-            self.SG.frequency = '{} GHz'.insert(frequency)
-            for curr in self._current_sweep:
-                self.PS.current = curr
-                time.sleep = self.read_delay
-                X_array.append(self.LIA.X)
-                Y_array.append(self.LIA.Y)
-            df = pd.DataFrame({'current_A': self._current_sweep, 'field_Oe': self.field_sweep,
-                               'X': X_array, 'Y': Y_array})
-            df.to_csv(save_dir + '\freq_{}_ghz.csv'.format(frequency))
-        self.PS.current = 0
+            for field, frequency_range in zip(fields, frequencies):
+                self.sweep_frequency(field, frequency_range, save_dir=save_dir, closefig=closefig, savefig=savefig)
 
-    def field_frequency(self):
-        save_dir = self._get_save_dir()
-        self._current_sweep = self.field2current(self.field_sweep)
-        X_array = []
-        Y_array = []
-        for i, curr in enumerate(self._current_sweep):
-            self.PS.current = curr
-            for frequency in self.frequency_sweep:
-                self.SG.frequency = '{} GHz'.format(frequency)
-                time.sleep = self.read_delay
-                X_array.append(self.LIA.X)
-                Y_array.append(self.LIA.Y)
-            df = pd.DataFrame({'frequency_ghz': self.frequency_sweep, 'X': X_array, 'Y': Y_array})
-            df.to_csv(save_dir + '\field_{}_oe.csv'.format(self.field_sweep[i]))
+
+    def uniform_multisweep(self, primary_parameter=None, save_dir=None, fields=None, frequencies=None, closefig=True, savefig=False):
+        '''constant_parameter can be "frequency" or "field"'''
+        if (frequencies is None) or (fields is None):
+            self._log('ERR ', 'Sweep parameter Error! Valid inputs are "frequency" and "field".')
+            print('Error: You must pass in your frequency and field ranges.\n')
+            return None
+        if primary_parameter not in ['frequency', 'field']:
+            self._log('ERR ', 'Primary Parameter Error! Choose whether "frequency" or "field" will be primary.')
+            print('Error: Primary Parameter Error! Choose whether "frequency" or "field" will be primary.')
+            return None
+        if save_dir is None:
+            save_dir = self._get_save_dir()
+        
+        if primary_parameter == 'frequency':
+            for frequency in frequencies:
+                self.sweep_field(frequency, fields, save_dir=save_dir, closefig=closefig, savefig=savefig)
+        else:
+            for field in fields:
+                self.sweep_frequency(field, frequencies, save_dir=save_dir, closefig=closefig, savefig=savefig)
+    
+    def sweep_field(self, frequency, fields, save_dir=None, savefig=False, closefig=False):
+        if save_dir is None:
+            save_dir = self._get_save_dir()
+        else:
+            if not os.path.isdir(save_dir):
+                os.mkdir(save_dir)
+        self.SG.frequency = '{} GHz'.format(frequency)
+        plot_title = 'Field Sweep {}–{} Oe @ {} GHz'.format(fields.min(), fields.max(), frequency)
+        self.make_fig(plot_title)
+        X_array, Y_array = [], []
+        currents = self.field2current(fields)
+        for i, current in enumerate(currents):
+            self.PS.current = current
+            time.sleep(self.read_delay)
+            X_array.append(self.readX())
+            Y_array.append(self.readY())
+            self.update_plot(fields[0:i + 1], X_array, Y_array)
+        df = pd.DataFrame({'current_A': currents, 'field_Oe': fields, 'X': X_array, 'Y': Y_array})
+        filename = r'\freq_{}_GHz_field_{}–{}_Oe'.format(frequency, fields.min(), fields.max())
+        df.to_csv(save_dir + filename + '.csv', index=False)
         self.PS.current = 0
+        if closefig:
+            plt.close(self.fig)
+        if savefig:
+            self.fig.savefig(save_dir + filename + '.png')
+
+    def sweep_frequency(self, field, frequencies, save_dir=None, savefig=False, closefig=False):
+        if save_dir is None:
+            save_dir = self._get_save_dir()
+        else:
+            if not os.path.isdir(save_dir):
+                os.mkdir(save_dir)
+        current = self.field2current(field)
+        self.PS.current = current
+        X_array, Y_array = [], []
+        plot_title = 'Frequency Sweep {}–{} GHz @ {} Oe'.format(frequencies.min(), frequencies.max(), field)
+        self.make_fig(plot_title)
+        for i, frequency in enumerate(frequencies):
+            self.SG.frequency = '{} GHz'.format(frequency)
+            time.sleep(self.read_delay)
+            X_array.append(self.readX())
+            Y_array.append(self.readY())
+            self.update_plot(frequencies[0:i + 1], X_array, Y_array)
+            df = pd.DataFrame({'frequency_ghz': frequencies, 'X': X_array, 'Y': Y_array})
+            filename = r'\field_{}_Oe_freq_{}–{}_GHz'.format(field, frequencies.min(), frequencies.max())
+            df.to_csv(save_dir + filename + '.csv', index=False)
+        self.PS.current = 0
+        if closefig:
+            plt.close(self.fig)
+        if savefig:
+            self.fig.savefig(save_dir + filename + '.png')
+
 
     def _get_save_dir(self):
-        path = input("""Please enter the directory path where you'd like to save your files.\n
-                        It's always good to give it a good name that you'll recognise later.""")
-        path = os.path.abspath(path)
+        save_dir = input("Please enter the directory path where you'd like to save your files. It's always good to give it a good name that you'll recognise later.\n")
+        save_dir = os.path.abspath(save_dir)
 
-        if not os.path.isdir(path):
-            os.mkdir(path)
-        return path
+        if not os.path.isdir(save_dir):
+            os.mkdir(save_dir)
+        return save_dir
     
+
     def field2current(self, field):
         return field / 669
     
     def current2field(self, current):
         return current * 669
+    
+
+    def make_fig(self, title):
+        self.fig = plt.figure(figsize=(9, 6))
+        self.ax = self.fig.add_subplot(111)
+        self.ax.set_xlabel('Field (Oe)')
+        self.ax.set_ylabel('Voltage (AU)')
+        self.ax.set_title(title)
+        self.l1, = self.ax.plot([], [], label='Channel 1 (X)')
+        self.l2, = self.ax.plot([], [], label='Channel 2 (Y)')
+        plt.legend()
+        plt.show()
+
+    def update_plot(self, xdata, ch1_data, ch2_data):
+        self.l1.set_xdata(xdata)
+        self.l1.set_ydata(ch1_data)
+
+        self.l2.set_xdata(xdata)
+        self.l2.set_ydata(ch2_data)
+
+        self.ax.set_xlim(min(xdata), max(xdata))
+        self.ax.set_ylim(min(min(ch1_data), min(ch2_data)), max(max(ch1_data), max(ch2_data)))
+
+        self.fig.canvas.draw()
+        self.fig.canvas.flush_events()
+
+
+    def readX(self):
+        X = self.LIA.X
+        sen_ratio = abs(X)/self.LIA.SEN
+        if sen_ratio > 0.8:
+            self.LIA.decrease_sensitivity()
+            time.sleep(5)
+        return X
+    
+    def readY(self):
+        Y = self.LIA.Y
+        sen_ratio = abs(Y)/self.LIA.SEN
+        if sen_ratio > 0.8:
+            self.LIA.decrease_sensitivity()
+            time.sleep(5)
+        return Y
