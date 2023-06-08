@@ -214,11 +214,9 @@ class SRS_SR830(_InstrumentBase):
         # TODO Implement
         pass
 
-    @property
     def X(self):
         return self.query_float('OUTP? 1')
 
-    @property
     def Y(self):
         return self.query_float('OUTP? 2')
 
