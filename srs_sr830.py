@@ -218,6 +218,10 @@ class SRS_SR830(_InstrumentBase):
 
     def Y(self):
         return self.query_float('OUTP? 2')
+    
+    def returnXY(self):
+        X, Y = self.query('SNAP?1,2').split(',')
+        return float(X), float(Y)
 
     @property
     def Magnitude(self):

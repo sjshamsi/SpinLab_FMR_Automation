@@ -8,8 +8,8 @@ from datetime import datetime
 
 # Let's import our instrument classes
 from hp_8673g import HP_CWG
-from SRS_SR830 import SRS_SR830
-from BOP50_8D import KEPCO_BOP
+from srs_sr830 import SRS_SR830
+from bop50_8d import KEPCO_BOP
 
 class Experiment():
     def __init__(self, logFilePath=None):

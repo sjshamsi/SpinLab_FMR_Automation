@@ -68,7 +68,11 @@ class HP_CWG(_InstrumentBase):
     def frequency(self, frequency):
         frq_val, units = frequency.split(' ')
         self._frequency_out(frq_val, 'FR', units)
-        self.check_message()
+        self._check_message()
+
+    def set_frequency_ghz(self, frequency):
+        self._frequency_out(frequency, 'FR', 'GHz')
+        self._check_message()
     
     
     ### Start frequency methods
@@ -80,7 +84,7 @@ class HP_CWG(_InstrumentBase):
     def start_frequency(self, frequency):
         frq_val, units = frequency.split(' ')
         self._frequency_out(frq_val, 'FA', units)
-        self.check_message()
+        self._check_message()
     
 
     ### Stop frequency methods
@@ -92,7 +96,7 @@ class HP_CWG(_InstrumentBase):
     def stop_frequency(self, frequency):
         frq_val, units = frequency.split(' ')
         self._frequency_out(frq_val, 'FB', units)
-        self.check_message()
+        self._check_message()
     
     
     ### Delta frequency methods
@@ -104,7 +108,7 @@ class HP_CWG(_InstrumentBase):
     def delta_frequency(self, frequency):
         frq_val, units = frequency.split(' ')
         self._frequency_out(frq_val, 'FS', units)
-        self.check_message()
+        self._check_message()
         
         
     ### Frequency increment methods
@@ -116,7 +120,7 @@ class HP_CWG(_InstrumentBase):
     def frequency_increment(self, frequency):
         frq_val, units = frequency.split(' ')
         self._frequency_out(frq_val, 'FI', units)
-        self.check_message()
+        self._check_message()
     
     
     ### Step size and step number methods
@@ -134,7 +138,7 @@ class HP_CWG(_InstrumentBase):
             self.write('SP {} SS'.format(step_val))
         else:
             self._frequency_out(step_val, 'SP', step_units)
-        self.check_message()
+        self._check_message()
 
 
     ### RF output mehtods
@@ -154,7 +158,6 @@ class HP_CWG(_InstrumentBase):
             pass
         else:
             command = ['R1', 'R0'][valid_statuses.index(status)]
-            print(command)
             self.write(command)
             self.RF_ON = not self.RF_ON
 
@@ -167,7 +170,7 @@ class HP_CWG(_InstrumentBase):
     @level.setter
     def level(self, value):
         self.write('LE {} DB'.format(value))
-        self.check_message()
+        self._check_message()
 
     
     @property
@@ -177,7 +180,7 @@ class HP_CWG(_InstrumentBase):
     @range.setter
     def range(self, value):
         self.write('RA {} DB'.format(value))
-        self.check_message()
+        self._check_message()
 
 
     @property
@@ -187,7 +190,7 @@ class HP_CWG(_InstrumentBase):
     @vernier.setter
     def vernier(self, value):
         self.write('VE {} DB'.format(value))
-        self.check_message()
+        self._check_message()
 
     
     def increase_range(self):
@@ -203,7 +206,7 @@ class HP_CWG(_InstrumentBase):
         code = self.query('MG')
         return code, self.error_codes[code]
     
-    def check_message(self):
+    def _check_message(self):
         code, description = self.message
         if code == '00':
             return None

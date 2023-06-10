@@ -103,6 +103,9 @@ class KEPCO_BOP(_InstrumentBase):
     def current(self, cOut):
         self.CurrentOut(cOut)
 
+    def set_current(self, cOut):
+        self.CurrentOut(cOut)
+
     def BEEP(self):
         '''BEEP'''
         self.write('SYST:BEEP')
