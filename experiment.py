@@ -8,8 +8,8 @@ from datetime import datetime
 
 # Let's import our instrument classes
 from hp_8673g import HP_CWG
-from srs_sr830_RS232 import SRS_SR830
-from bop50_8d import KEPCO_BOP
+from SRS_SR830 import SRS_SR830
+from BOP50_8D import KEPCO_BOP
 
 class Experiment():
     def __init__(self, logFilePath=None):
@@ -32,7 +32,7 @@ class Experiment():
         self.PS.CurrentMode()
         self.PS.voltage = 40
         self.PS.current = 0
-        self.LIA = SRS_SR830(ResourceName='ASRL4::INSTR', logFile=self._logFile)
+        self.LIA = SRS_SR830(logFile=self._logFile)
 
         self.read_delay = 1
         self.from_0_delay = 5
@@ -91,7 +91,8 @@ class Experiment():
         self.print_parameters()
 
 
-    def multisweep(self, primary_parameter=None, save_dir=None, fields=None, frequencies=None, closefig=True, savefig=True, reset_sens=True):
+    def multisweep(self, primary_parameter=None, save_dir=None, fields=None, frequencies=None, closefig=True,
+                   savefig=True, reset_sens=True, file_prefix=None):
         '''constant_parameter can be "frequency" or "field"'''
         if (frequencies is None) or (fields is None):
             self._log('ERR ', 'Sweep parameter Error! Valid inputs are "frequency" and "field".')
@@ -106,14 +107,17 @@ class Experiment():
         
         if primary_parameter == 'frequency':
             for frequency, field_range in zip(frequencies, fields):
-                self.sweep_field(frequency, field_range, save_dir=save_dir, closefig=closefig, savefig=savefig, default_sen=reset_sens)
+                self.sweep_field(frequency, field_range, save_dir=save_dir, closefig=closefig, savefig=savefig,
+                                 default_sen=reset_sens, file_prefix=file_prefix)
 
         else:
             for field, frequency_range in zip(fields, frequencies):
-                self.sweep_frequency(field, frequency_range, save_dir=save_dir, closefig=closefig, savefig=savefig, default_sen=reset_sens)
+                self.sweep_frequency(field, frequency_range, save_dir=save_dir, closefig=closefig, savefig=savefig,
+                                     default_sen=reset_sens, file_prefix=file_prefix)
 
 
-    def uniform_multisweep(self, primary_parameter=None, save_dir=None, fields=None, frequencies=None, closefig=True, savefig=True, reset_sens=True):
+    def uniform_multisweep(self, primary_parameter=None, save_dir=None, fields=None, frequencies=None, closefig=True,
+                           savefig=True, reset_sens=True, file_prefix=None):
         '''constant_parameter can be "frequency" or "field"'''
         if (frequencies is None) or (fields is None):
             self._log('ERR ', 'Sweep parameter Error! Valid inputs are "frequency" and "field".')
@@ -128,12 +132,15 @@ class Experiment():
         
         if primary_parameter == 'frequency':
             for frequency in frequencies:
-                self.sweep_field(frequency, fields, save_dir=save_dir, closefig=closefig, savefig=savefig, default_sen=reset_sens)
+                self.sweep_field(frequency, fields, save_dir=save_dir, closefig=closefig, savefig=savefig,
+                                 default_sen=reset_sens, file_prefix=file_prefix)
         else:
             for field in fields:
-                self.sweep_frequency(field, frequencies, save_dir=save_dir, closefig=closefig, savefig=savefig, default_sen=reset_sens)
+                self.sweep_frequency(field, frequencies, save_dir=save_dir, closefig=closefig, savefig=savefig,
+                                     default_sen=reset_sens, file_prefix=file_prefix)
     
-    def sweep_field(self, frequency, fields, save_dir=None, savefig=True, closefig=False, default_sen=True):
+    def sweep_field(self, frequency, fields, save_dir=None, savefig=True, closefig=False, default_sen=True,
+                    file_prefix=None):
         if default_sen:
             self.LIA.SEN = self.default_sensitivity
         if save_dir is None:
@@ -142,6 +149,7 @@ class Experiment():
             if not os.path.isdir(save_dir):
                 os.mkdir(save_dir)
         self.SG.frequency = '{} GHz'.format(frequency)
+        time.sleep(0.5)
         currents = self.field2current(fields)
         # Janky solution to the current not immediately jumping from 0 to first value
         self.PS.current = currents[0]
@@ -156,15 +164,19 @@ class Experiment():
             Y_array.append(self.readLIA('Y', 'mean mid-50'))
             self.update_plot(fields[0:i + 1], X_array, Y_array)
         df = pd.DataFrame({'current_A': currents, 'field_Oe': fields, 'X': X_array, 'Y': Y_array})
-        filename = r'\freq_{:.4g}_GHz_field_{:.4g}-{:.4g}_Oe'.format(frequency, fields.min(), fields.max())
-        df.to_csv(save_dir + filename + '.csv', index=False)
+        filename = r'freq_{:.4g}_GHz_field_{:.4g}-{:.4g}_Oe_{:.4g}_dB'.format(frequency, fields.min(), fields.max(),
+                                                                               float(self.SG.level[2:-2]))
+        if not (file_prefix is None):
+            filename = file_prefix + '_' + filename 
+        df.to_csv(save_dir + r'\\' + filename + '.csv', index=False)
         self.PS.current = 0
+        if savefig:
+            self.fig.savefig(save_dir + r'\\' + filename + '.png', dpi=600)
         if closefig:
             plt.close(self.fig)
-        if savefig:
-            self.fig.savefig(save_dir + filename + '.png', dpi=1200)
 
-    def sweep_frequency(self, field, frequencies, save_dir=None, savefig=True, closefig=False, default_sen=True):
+    def sweep_frequency(self, field, frequencies, save_dir=None, savefig=True, closefig=False, default_sen=True,
+                        file_prefix=None):
         if default_sen:
             self.LIA.SEN = self.default_sensitivity
         if save_dir is None:
@@ -174,7 +186,9 @@ class Experiment():
                 os.mkdir(save_dir)
         current = self.field2current(field)
         # Janky solution to the current not immediately jumping from 0 to first value
+        time.sleep(0.5)
         self.PS.current = current
+        time.sleep(0.5)
         self.SG.frequency = '{} GHz'.format(frequencies[0])
         time.sleep(self.from_0_delay)
         plot_title = 'Frequency Sweep {:.4g}–{:.4g} GHz @ {:.4g} Oe'.format(frequencies.min(), frequencies.max(), field)
@@ -187,13 +201,16 @@ class Experiment():
             Y_array.append(self.readLIA('Y', 'mean mid-50'))
             self.update_plot(frequencies[0:i + 1], X_array, Y_array)
         df = pd.DataFrame({'frequency_ghz': frequencies, 'X': X_array, 'Y': Y_array})
-        filename = r'\field_{:.4g}_Oe_freq_{:.4g}-{:.4g}_GHz'.format(field, frequencies.min(), frequencies.max())
-        df.to_csv(save_dir + filename + '.csv', index=False)
+        filename = r'\field_{:.4g}_Oe_freq_{:.4g}-{:.4g}_GHz_{:.4g}_dB'.format(field, frequencies.min(),
+                                                                               frequencies.max(), float(self.SG.level[2:-2]))
+        if not (file_prefix is None):
+            filename = file_prefix + '_' + filename
+        df.to_csv(save_dir + '\\' + filename + '.csv', index=False)
         self.PS.current = 0
+        if savefig:
+            self.fig.savefig(save_dir + '\\' + filename + '.png', dpi=600)
         if closefig:
             plt.close(self.fig)
-        if savefig:
-            self.fig.savefig(save_dir + filename + '.png', dpi=1200)
 
 
     def _get_save_dir(self):
