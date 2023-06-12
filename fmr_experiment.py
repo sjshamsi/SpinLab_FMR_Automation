@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 # Let's import our instrument classes
 from hp_8673g import HP_CWG
@@ -34,7 +35,7 @@ class Experiment():
         self.PS.current = 0
         
         # Various delays here
-        self.from_0_delay = 2
+        self.from_0_delay = 3
         self.sensitivity_delay = 3
 
         self.welcome()
@@ -165,7 +166,7 @@ class Experiment():
         for i, param in enumerate(param_range):
             set_param(param)
             time.sleep(read_delay)
-            X, Y = self.readXY(avg_func, read_reps, read_delay)
+            X, Y = self.readXY(avg_func, read_reps, rep_delay)
             X_array = np.append(X_array, X)
             Y_array = np.append(Y_array, Y)
             self.update_plot(xrange[0:i + 1], X_array, Y_array)
@@ -180,7 +181,7 @@ class Experiment():
 
     def make_2D_figs(self, frequencies, fields, save_dir, primary='frequency', channel='X', savefig=True,
                 closefig=True, file_prefix='', sen=0.002, read_delay=0.02, read_reps=1, rep_delay=0,
-                avg_func=None):
+                avg_func=np.average, integrate=True):
         arr = np.zeros((len(frequencies), len(fields)))
 
         if primary == 'frequency':
@@ -209,17 +210,30 @@ class Experiment():
         np.save(save_dir + '\\' + filename, arr)
         
         plt.figure(figsize=(10, 7))
-        plot = plt.pcolormesh(fields, frequencies, arr, cmap='viridis')
+        plot = plt.pcolormesh(fields, frequencies, arr, cmap='coolwarm')
         plt.colorbar(plot)
         plt.xlabel('Field (Oe)')
         plt.ylabel('Frequency (GHz)')
         plt.title(title)
         plt.savefig(save_dir + '\\' + filename + '.png', dpi=600)
 
-    def make_2D(self, frequencies, fields, save_dir, primary='frequency', channel='X', savefigs=True,
-                closefig=True, file_prefix='', sen=0.002, read_delay=0.02, read_reps=1, rep_delay=0,
-                avg_func=None):
+    def make_2D(self, frequencies, fields, save_dir, primary='frequency', channel='X',
+                file_prefix='', sen=0.002, read_delay=0.02, read_reps=1, rep_delay=0,
+                avg_func=np.average, integrate=True):
+        self.LIA.SEN = sen
         arr = np.zeros((len(frequencies), len(fields)))
+
+        fig, ax = plt.subplots(figsize=(10,7))
+        plot = ax.pcolormesh(fields, frequencies, arr, cmap='coolwarm')
+        cbar = fig.colorbar(plot)
+
+        ax.set_xlabel('Field (Oe)')
+        ax.set_ylabel('Frequency (GHz)')
+        title = '2D Sweep: Frequency {} – {} GHz, Field {} – {} Oe, {} dB'.format(
+            frequencies.min(), frequencies.min(), fields.min(), fields.max(), float(self.SG.level[2:-2]))
+        ax.set_title(title)
+        plt.show()
+
         currents = self.field2current(fields)
         if primary == 'frequency':
             for i, freq in enumerate(frequencies):
@@ -230,13 +244,28 @@ class Experiment():
                 for curr in currents:
                     self.PS.set_current(curr)
                     time.sleep(read_delay)
-                    x, y = self.readXY(np.average, read_reps, rep_delay)
+                    x, y = self.readXY(avg_func, read_reps, rep_delay)
                     X_arr = np.append(X_arr, x)
                     Y_arr = np.append(Y_arr, y)
                 if channel == 'X':
-                    arr[i] = X_arr
+                    if integrate:
+                        arr[i] = self._integrate(fields, X_arr)[1]
+                    else:
+                        arr[i] = X_arr
                 if channel == 'Y':
-                    arr[i] = Y_arr
+                    if integrate:
+                        arr[i] = self._integrate(fields, Y_arr)[1]
+                    else:
+                        arr[i] = Y_arr
+                ax.clear()
+                plot = ax.pcolormesh(fields, frequencies[:i + 1], arr[:i + 1], cmap='coolwarm')
+                ax.set_xlabel('Field (Oe)')
+                ax.set_ylabel('Frequency (GHz)')
+                ax.set_title(title)
+                cbar.update_normal(plot)
+                fig.canvas.draw()
+                fig.show()
+                plt.pause(0.01)
 
         if primary == 'fields':
             for i, curr in enumerate(currents):
@@ -251,22 +280,25 @@ class Experiment():
                     X_arr = np.append(X_arr, x)
                     Y_arr = np.append(Y_arr, y)
                 if channel == 'X':
-                    arr[:, i] = X_arr
+                    if integrate:
+                        arr[i] = self._integrate(frequencies, X_arr)[1]
+                    else:
+                        arr[:, i] = X_arr
                 if channel == 'Y':
-                    arr[:, i] = Y_arr
+                    if integrate:
+                        arr[i] = self._integrate(frequencies, Y_arr)[1]
+                    else:
+                        arr[:, 1] = Y_arr
+                ax.clear()
+                plot = ax.pcolormesh(fields[:i + 1], frequencies, arr, cmap='coolwarm')
+                ax.colorbar(plot)
+
         filename = file_prefix + 'frequency_{:.4g}-{:.4g}_GHz_field_{:.4g}-{:.4g}_Oe_{:.4g}_dB'.format(
             frequencies.min(), frequencies.min(), fields.min(), fields.max(), float(self.SG.level[2:-2]))
-        title = '2D Sweep: Frequency {} – {} GHz, Field {} – {} Oe, {} dB'.format(
-            frequencies.min(), frequencies.min(), fields.min(), fields.max(), float(self.SG.level[2:-2]))
         np.save(save_dir + '\\' + filename, arr)
-        
-        plt.figure(figsize=(10, 7))
-        plot = plt.pcolormesh(fields, frequencies, arr, cmap='viridis')
-        plt.colorbar(plot)
-        plt.xlabel('Field (Oe)')
-        plt.ylabel('Frequency (GHz)')
-        plt.title(title)
         plt.savefig(save_dir + '\\' + filename + '.png', dpi=600)
+        self.PS.current = 0
+        return arr
     
 
     def _get_save_dir(self):
@@ -339,7 +371,17 @@ class Experiment():
     
     def avg_mid_50(self, arr):
         return np.mean(arr[np.logical_and(arr >= np.percentile(arr, 25), arr <= np.percentile(arr, 75))])
+    
 
+    def _integrate(self, xarr, varr, c=0.0):
+        varr = varr - np.mean(varr)
+        intg_x = np.insert(xarr, 0, xarr[0] - (xarr[1] - xarr[0]))
+        intg_y = np.array([c])
+        
+        for i in range(len(xarr)):
+            dydx = varr[i]
+            intg_y = np.append(intg_y, dydx * (intg_x[i + 1] - intg_x[i]) + intg_y[i])
+        return intg_x[1:], intg_y[1:]
 
 ### Here lie some helper functions
 
