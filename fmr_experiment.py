@@ -14,6 +14,8 @@ from bop50_8d import KEPCO_BOP
 class Experiment():
     def __init__(self, logFilePath=None):
         if logFilePath is None:
+            if not os.path.isdir(os.path.abspath('./Experiment_Logs')):
+                os.mkdir(os.path.abspath('./Experiment_Logs'))
             logFilePath = './Experiment_Logs/FMR_log_{}.log'.format(self._get_timestring())
         with open(logFilePath, 'w') as log:
             log.write('SpinLab Instruments LogFile @ {}'.format(datetime.utcnow()) + '\n')
