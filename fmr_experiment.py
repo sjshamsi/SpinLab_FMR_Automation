@@ -256,7 +256,7 @@ class Experiment():
             ax.set_title(title)
             cbar.update_normal(plot)
             fig.canvas.draw()
-            plt.pause(0.01)
+            plt.pause(0.05)
             
         filename = file_prefix + '2Dsweep_freq_{:.4g}-{:.4g}_GHz_field_{:.4g}-{:.4g}_Oe_{:.4g}_dB_channel_{}_{}'.format(
             frequencies.min(), frequencies.min(), fields.min(), fields.max(), float(self.SG.level[2:-2]), channel, intstatus)
