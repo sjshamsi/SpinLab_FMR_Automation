@@ -143,15 +143,19 @@ class SRS_SR830(_InstrumentBase):
         self.write('SENS %d' % sen_i)
 
     def decrease_sensitivity(self):
-        sen_i = self.query_int('SENS?') + 1
-        if sen_i <= 26:
-            self.write('SENS %d' % sen_i)
+        sen_i = self.query_int('SENS?')
+        if sen_i == 26:
+            self._log('decrease_sensitivity ERR ', 'Sensivity already at minimum! Changing nothing.')
+        else:
+            self.write('SENS %d' % sen_i + 1)
 
     def increase_sensitivity(self):
-        sen_i = self.query_int('SENS?') - 1
-        if sen_i >= 0:
-            self.write('SENS %d' % sen_i)
-
+        sen_i = self.query_int('SENS?')
+        if sen_i == 0:
+            self._log('increase_sensitivity ERR ', 'Sensivity already at maximum! Changing nothing.')
+        else:
+            self.write('SENS %d' % sen_i - 1)
+            
     def FilterSlope(self, sl):
         '''
         Set the output filter slope
@@ -213,13 +217,14 @@ class SRS_SR830(_InstrumentBase):
         # TODO Implement
         pass
 
-    def X(self):
+    # Some functions I added myself, need to upate them as they are slowww
+    def getX(self):
         return self.query_float('OUTP? 1')
 
-    def Y(self):
+    def getY(self):
         return self.query_float('OUTP? 2')
     
-    def returnXY(self):
+    def getXY(self):
         X, Y = self.query('SNAP?1,2').split(',')
         return float(X), float(Y)
 

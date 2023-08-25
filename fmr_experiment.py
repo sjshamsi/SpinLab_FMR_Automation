@@ -18,7 +18,7 @@ class Experiment():
                 os.mkdir(os.path.abspath('./Experiment_Logs'))
             logFilePath = './Experiment_Logs/FMR_log_{}.log'.format(self._get_timestring())
         with open(logFilePath, 'w') as log:
-            log.write('SpinLab Instruments LogFile @ {}'.format(datetime.utcnow()) + '\n')
+            log.write('SpinLab Instruments LogFile @ {}\n'.format(datetime.utcnow()))
         self._logFile = os.path.abspath(logFilePath)
         self._logWrite('OPEN_')
 
@@ -27,13 +27,12 @@ class Experiment():
         self.PS = KEPCO_BOP(logFile=self._logFile)
         self.LIA = SRS_SR830(logFile=self._logFile)
 
-        # Some initial PS settings
+        # Some initial PS settings for safety
         self.PS.CurrentMode()
-        self.PS.voltage = 40
-        self.PS.current = 0
+        self.PS.VoltageOut(40)
+        self.PS.CurrentOut(0)
         
         # Various delays here
-        
         self.sen = 0.0002
         self.sen_delay = 3
         self.read_reps = 1
@@ -52,7 +51,7 @@ class Experiment():
         del self.LIA
 
     def __str__(self):
-        return 'FMR Experiment @ ' + datetime.utcnow()
+        return 'FMR Experiment @ ' + self._get_timestring()
     
     def _logWrite(self, action, value=''):
             if self._logFile is not None:

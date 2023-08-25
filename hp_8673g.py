@@ -46,80 +46,70 @@ class HP_CWG(_InstrumentBase):
         self.VI.clear()
         self.RF_ON = False
         super().__del__()
-    
-    def _frequency_out(self, frq_val, mode, units):
-        valid_units = ['Hz', 'KHz', 'MHz', 'GHz']
 
-        frq_val = round(float(frq_val), 5)
-        
-        if units in valid_units:
-            unit_str = ['HZ', 'KZ', 'MZ', 'GZ'][valid_units.index(units)]
-            self.write('{0} {1} {2}'.format(mode, frq_val, unit_str))
-        else:
-            self._log('ERR ', 'Frequency error code. Invalid units! Valid units are "Hz", "KHz", "MHz", and "GHz".')
-            return None
+    def _frequency_in(self, command):
+        frequency_hz = self.query(command)[2:-2]
+        return float(frequency_hz) / 1E9
+    
+    def _frequency_out(self, frequency_val, mode):
+        self.write('{} {:.9f} GZ'.format(mode, frequency_val))
     
     ### Main frequency/Centre frequency (they seem to be the same thing to me) methods
     @property
     def frequency(self):
-        return self.query('OK')
+        return self._frequency_in('OK')
     
     @frequency.setter
-    def frequency(self, frequency):
-        frq_val, units = frequency.split(' ')
-        self._frequency_out(frq_val, 'FR', units)
+    def frequency(self, frequency_val):
+        self._frequency_out(frequency_val, 'FR')
         self._check_message()
 
-    def set_frequency_ghz(self, frequency):
-        self._frequency_out(frequency, 'FR', 'GHz')
+    def set_frequency(self, frequency_val):
+        self._frequency_out(frequency_val, 'FR')
         self._check_message()
     
     
     ### Start frequency methods
     @property
     def start_frequency(self):
-        return self.query('FA OA')
+        return self._frequency_in('FA OA')
     
     @start_frequency.setter
-    def start_frequency(self, frequency):
-        frq_val, units = frequency.split(' ')
-        self._frequency_out(frq_val, 'FA', units)
+    def start_frequency(self, frequency_val):
+        self._frequency_out(frequency_val, 'FA')
         self._check_message()
     
 
     ### Stop frequency methods
     @property
     def stop_frequency(self):
-        return self.query('FB OA')
+        return self._frequency_in('FB OA')
         
     @stop_frequency.setter
-    def stop_frequency(self, frequency):
-        frq_val, units = frequency.split(' ')
-        self._frequency_out(frq_val, 'FB', units)
+    def stop_frequency(self, frequency_val):
+        self._frequency_out(frequency_val, 'FB')
         self._check_message()
     
     
     ### Delta frequency methods
     @property
     def delta_frequency(self):
-        return self.query('FS OA')
+        return self._frequency_in('FS OA')
     
     @delta_frequency.setter
-    def delta_frequency(self, frequency):
-        frq_val, units = frequency.split(' ')
-        self._frequency_out(frq_val, 'FS', units)
+    def delta_frequency(self, frequency_val):
+        self._frequency_out(frequency_val, 'FS')
         self._check_message()
         
         
     ### Frequency increment methods
     @property
     def frequency_increment(self):
-        return self.query('FI OA')
+        return self._frequency_in('FI OA')
     
     @frequency_increment.setter
-    def frequency_increment(self, frequency):
-        frq_val, units = frequency.split(' ')
-        self._frequency_out(frq_val, 'FI', units)
+    def frequency_increment(self, frequency_val):
+        self._frequency_out(frequency_val, 'FI')
         self._check_message()
     
     
