@@ -2,7 +2,6 @@
 import os
 import time
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
 
@@ -10,6 +9,10 @@ from datetime import datetime
 from hp_8673g import HP_CWG
 from srs_sr830 import SRS_SR830
 from bop50_8d import KEPCO_BOP
+
+# We'll apply specific matplotlib styles, see if that works
+plt.style.use('seaborn-v0_8')
+plt.style.use('seaborn-v0_8-colorblind')
 
 class Experiment():
     def __init__(self, logFilePath=None):
@@ -32,14 +35,14 @@ class Experiment():
         self.PS.VoltageOut(40)
         self.PS.CurrentOut(0)
         
-        # Various delays here
-        self.sen = 0.0002
-        self.sen_delay = 3
-        self.read_reps = 1
-        self.rep_delay = 0
-        self.avg_func = np.mean
-        self.read_delay = 0.02
-        self.from0delay = 4
+        # Various default parameters here
+        self.sensitivity = 2E-4 # 200 uV
+        self.sensitivityChangeDelay = 3 # s
+        self.readReps = 1
+        self.betweenRepDelay = 0 # s
+        self.repAveragingFunction = np.mean
+        self.HperI = 669  # Oe/Ampere
+        self.MaxHRate = 30.0  # max rate with which to change H (Oe/s)
 
         self._welcome()
 
@@ -64,15 +67,12 @@ class Experiment():
     def _welcome(self):
         print("Welcome to the FMR Experiment!")
         print("Here are some default experiment parameters.\n")
-        self._print_parameters()
+        self.printParameters()
         
-    def _print_parameters(self):
+    def printParameters(self):
         parameters = {
-            'PS Output Current (A)': self.PS.current,
-            'PS Output Voltage (V)': self.PS.voltage,
-            'PS Output Mode (Current/Voltage)': self.PS.OperationMode,
-            'SG Frequency': self.SG.frequency,
-            'SG RF Output': self.SG.rf_output,
+            'Log File': self._logFile,
+            
             'SG RF Output Level': self.SG.level,
             'LIA Time Constant': self.LIA.TC,
             'LIA Sensivity': self.sen,
@@ -81,8 +81,8 @@ class Experiment():
             'Read Repetition Delay': self.rep_delay,
             'Repetition Averaging Function': self.avg_func,
             'Read Delay': self.read_delay,
-            'From 0 Delay (s)': self.from0delay,
-            'Log File': self._logFile}
+            'From 0 Delay (s)': self.from0delay
+            }
         for key, val in parameters.items():
             print(key, ':\t', val)
 
