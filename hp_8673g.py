@@ -44,102 +44,103 @@ class HP_CWG(_InstrumentBase):
     def __del__(self):
         "We'll reset the HP8673G and turn off the RF output"
         self.VI.clear()
+        self.VI.write('R0')
         self.RF_ON = False
         super().__del__()
 
-    def _frequency_in(self, command):
+    def _frequencyIn(self, command):
         frequency_hz = self.query(command)[2:-2]
         return float(frequency_hz) / 1E9
     
-    def _frequency_out(self, frequency_val, mode):
+    def _frequencyOut(self, frequency_val, mode):
         self.write('{} {:.9f} GZ'.format(mode, frequency_val))
     
     ### Main frequency/Centre frequency (they seem to be the same thing to me) methods
     @property
     def frequency(self):
-        return self._frequency_in('OK')
+        return self._frequencyIn('OK')
     
     @frequency.setter
     def frequency(self, frequency_val):
-        self._frequency_out(frequency_val, 'FR')
+        self._frequencyOut(frequency_val, 'FR')
         self._check_message()
 
-    def set_frequency(self, frequency_val):
-        self._frequency_out(frequency_val, 'FR')
+    def setFrequency(self, frequency_val):
+        self._frequencyOut(frequency_val, 'FR')
         self._check_message()
     
     
     ### Start frequency methods
     @property
-    def start_frequency(self):
-        return self._frequency_in('FA OA')
+    def startFrequency(self):
+        return self._frequencyIn('FA OA')
     
-    @start_frequency.setter
-    def start_frequency(self, frequency_val):
-        self._frequency_out(frequency_val, 'FA')
+    @startFrequency.setter
+    def startFrequency(self, frequency_val):
+        self._frequencyOut(frequency_val, 'FA')
         self._check_message()
     
 
     ### Stop frequency methods
     @property
-    def stop_frequency(self):
-        return self._frequency_in('FB OA')
+    def stopFrequency(self):
+        return self._frequencyIn('FB OA')
         
-    @stop_frequency.setter
-    def stop_frequency(self, frequency_val):
-        self._frequency_out(frequency_val, 'FB')
+    @stopFrequency.setter
+    def stopFrequency(self, frequency_val):
+        self._frequencyOut(frequency_val, 'FB')
         self._check_message()
     
     
     ### Delta frequency methods
     @property
-    def delta_frequency(self):
-        return self._frequency_in('FS OA')
+    def deltaFrequency(self):
+        return self._frequencyIn('FS OA')
     
-    @delta_frequency.setter
-    def delta_frequency(self, frequency_val):
-        self._frequency_out(frequency_val, 'FS')
+    @deltaFrequency.setter
+    def deltaFrequency(self, frequency_val):
+        self._frequencyOut(frequency_val, 'FS')
         self._check_message()
         
         
     ### Frequency increment methods
     @property
-    def frequency_increment(self):
-        return self._frequency_in('FI OA')
+    def frequencyIncrement(self):
+        return self._frequencyIn('FI OA')
     
-    @frequency_increment.setter
-    def frequency_increment(self, frequency_val):
-        self._frequency_out(frequency_val, 'FI')
+    @frequencyIncrement.setter
+    def frequencyIncrement(self, frequency_val):
+        self._frequencyOut(frequency_val, 'FI')
         self._check_message()
     
     
     ### Step size and step number methods
     @property
-    def num_steps(self):
-        #return self.query('SPOA')
-        pass
+    def numSteps(self):
+        steps = self.query('SPOA').split(',')[-1]
+        return int(steps[2:-2])
 
-    @num_steps.setter
-    def steps(self, steps):
-        # step_val, step_units = step_num_size.split(' ')
-
-        # if step_units not in ['Steps', 'Hz', 'KHz', 'MHz', 'GHz']:
-        #     self._log('ERR ', 'Number of steps/step size error code. Invalid units! Valid units are "Steps", "Hz", "Kz", "Mz", and "Gz".')
-        # elif step_units == 'Steps':
-        #     self.write('SP {} SS'.format(step_val))
-        # else:
-        #     self._frequency_out(step_val, 'SP', step_units)
-        self._check_message()
+    @numSteps.setter
+    def numSteps(self, number):
+        if not (type(number) == int):
+            self._log('ERR ', 'Number of steps must be "int"!.')
+        else:
+            self.write('SP {} SS'.format(number))
+            self._check_message()
+        
 
     @property
-    def step_size(self):
-        pass
-        self._check_message()
-
-    @num_steps.setter
-    def step_size(self):
-        pass
-        self._check_message()
+    def stepSize(self):
+        step_size = self.query('SPOA').split(',')[0]
+        return float(step_size[2:-2]) / 1E9
+    
+    @stepSize.setter
+    def stepSize(self, step_size):
+        if not (type(step_size) in [int, float]):
+            self._log('ERR ', 'Step size must be "int" or "float"!.')
+        else:
+            self._frequencyOut(step_size, 'SP')
+            self._check_message()
 
     
     ### RF output mehtods
@@ -166,37 +167,52 @@ class HP_CWG(_InstrumentBase):
     ### Level, RANGE, and VERNIER methods
     @property
     def level(self):
-        #return self.query('LE OA')
-        pass
+        level_string = self.query('LE OA')
+        return float(level_string[2:-2])
     
     @level.setter
     def level(self, value):
-        # Figure out how manu decimal places sould these decibels go to. VERNIER scale seems to go 0.01 dB
-        self.write('LE {} DB'.format(value))
-        self._check_message()
+        if not (type(value) in [int, float]):
+            self._log('ERR ', 'Level must be "int" or "float"!.')
+        elif (value > 13) or (value < -102):
+            self._log('ERR ', 'Level must be between 13 dB and -102 dB inclusive!')
+        else:
+            self.write('LE {:.1f} DB'.format(value))
+            self._check_message()
 
     
     @property
     def range(self):
-        # Fix this
-        return self.query('RA OA')
+        range_string = self.query('RA OA')
+        return int(range_string[2:-2])
     
     @range.setter
-    # Adjust the DPs
     def range(self, value):
-        self.write('RA {} DB'.format(value))
-        self._check_message()
+        if type(value) != int:
+            self._log('ERR ', 'Range must be "int"!.')
+        elif (value > 10) or (value < -90):
+            self._log('ERR ', 'Range must be between 10 dB and -90 dB inclusive!')
+        elif value % 10 != 0:
+            self._log('ERR ', 'Range must be a multiple of 10!')
+        else:
+            self.write('RA {} DB'.format(value))
+            self._check_message()
 
 
     @property
-    # U know what to do
     def vernier(self):
-        return self.query('VE OA')
+        vernier_string = self.query('VE OA')
+        return float(vernier_string[2:-2])
     
     @vernier.setter
     def vernier(self, value):
-        self.write('VE {} DB'.format(value))
-        self._check_message()
+        if not (type(value) in [int, float]):
+            self._log('ERR ', 'Vernier must be "int" or "float"!')
+        elif (value > 3) or (value < -12):
+            self._log('ERR ', 'Vernier must be between 3 dB and -12 dB inclusive!')
+        else:
+            self.write('VE {:.1f} DB'.format(value))
+            self._check_message()
 
     
     def increase_range(self):
