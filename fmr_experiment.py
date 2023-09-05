@@ -58,7 +58,11 @@ class Experiment():
                 with open(self._logFile, 'a') as log:
                     timestamp = datetime.utcnow()
                     log.write('%s %s : %s \n' % (timestamp, action, repr(value)))
-    _log = _logWrite        
+    _log = _logWrite
+
+
+    def 
+       
 
     def _welcome(self):
         print("Welcome to the FMR Experiment!")
@@ -67,8 +71,8 @@ class Experiment():
         
     def _print_parameters(self):
         parameters = {
-            'PS Output Current (A)': self.PS.MeasuredCurrent,
-            'PS Output Voltage (V)': self.PS.MeasuredVoltage,
+            'PS Output Current (A)': self.PS.current,
+            'PS Output Voltage (V)': self.PS.voltage,
             'PS Output Mode (Current/Voltage)': self.PS.OperationMode,
             'SG Frequency': self.SG.frequency,
             'SG RF Output': self.SG.rf_output,

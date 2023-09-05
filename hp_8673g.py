@@ -115,22 +115,33 @@ class HP_CWG(_InstrumentBase):
     
     ### Step size and step number methods
     @property
-    def steps(self):
-        return self.query('SPOA')
+    def num_steps(self):
+        #return self.query('SPOA')
+        pass
 
-    @steps.setter
-    def steps(self, step_num_size):
-        step_val, step_units = step_num_size.split(' ')
+    @num_steps.setter
+    def steps(self, steps):
+        # step_val, step_units = step_num_size.split(' ')
 
-        if step_units not in ['Steps', 'Hz', 'KHz', 'MHz', 'GHz']:
-            self._log('ERR ', 'Number of steps/step size error code. Invalid units! Valid units are "Steps", "Hz", "Kz", "Mz", and "Gz".')
-        elif step_units == 'Steps':
-            self.write('SP {} SS'.format(step_val))
-        else:
-            self._frequency_out(step_val, 'SP', step_units)
+        # if step_units not in ['Steps', 'Hz', 'KHz', 'MHz', 'GHz']:
+        #     self._log('ERR ', 'Number of steps/step size error code. Invalid units! Valid units are "Steps", "Hz", "Kz", "Mz", and "Gz".')
+        # elif step_units == 'Steps':
+        #     self.write('SP {} SS'.format(step_val))
+        # else:
+        #     self._frequency_out(step_val, 'SP', step_units)
         self._check_message()
 
+    @property
+    def step_size(self):
+        pass
+        self._check_message()
 
+    @num_steps.setter
+    def step_size(self):
+        pass
+        self._check_message()
+
+    
     ### RF output mehtods
     @property
     def rf_output(self):
@@ -141,7 +152,7 @@ class HP_CWG(_InstrumentBase):
     @rf_output.setter
     def rf_output(self, status):
         valid_statuses = ['On', 'Off']
-        
+
         if status not in valid_statuses:
             self._log('ERR ', 'RF output error code. Invalid input! Valid inputs are "On" and "Off".')
         elif ((status == 'On') and self.RF_ON) or ((status == 'Off') and (not self.RF_ON)):
@@ -155,25 +166,30 @@ class HP_CWG(_InstrumentBase):
     ### Level, RANGE, and VERNIER methods
     @property
     def level(self):
-        return self.query('LE OA')
+        #return self.query('LE OA')
+        pass
     
     @level.setter
     def level(self, value):
+        # Figure out how manu decimal places sould these decibels go to. VERNIER scale seems to go 0.01 dB
         self.write('LE {} DB'.format(value))
         self._check_message()
 
     
     @property
     def range(self):
+        # Fix this
         return self.query('RA OA')
     
     @range.setter
+    # Adjust the DPs
     def range(self, value):
         self.write('RA {} DB'.format(value))
         self._check_message()
 
 
     @property
+    # U know what to do
     def vernier(self):
         return self.query('VE OA')
     
