@@ -59,9 +59,6 @@ class Experiment():
                     timestamp = datetime.utcnow()
                     log.write('%s %s : %s \n' % (timestamp, action, repr(value)))
     _log = _logWrite
-
-
-    def 
        
 
     def _welcome(self):
