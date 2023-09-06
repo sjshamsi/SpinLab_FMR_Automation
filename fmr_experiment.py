@@ -7,9 +7,9 @@ from datetime import datetime
 from pandas import DataFrame
 
 # Let's import our instrument classes
-from hp_8673g import HP_CWG
+from hp8673g import HP_CWG
 from srs_sr830 import SRS_SR830
-from bop50_8d import KEPCO_BOP
+from bop_50_8d import KEPCO_BOP
 
 # We'll apply specific matplotlib styles, see if that works
 plt.style.use('seaborn-v0_8')

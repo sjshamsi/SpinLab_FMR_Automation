@@ -1,21 +1,9 @@
-# coding=utf-8
-
-# Author: Diego González Chávez
-# email : diegogch@cbpf.br / diego.gonzalez.chavez@gmail.com
-#
-# This class controls the:
-# DSP Lock-In Amplifier
-# Stanford Research Systems: SR830
-#
-# TODO:
-# Make documentation
-
 import numpy as _np
-from instrumentBase import InstrumentBase as _InstrumentBase
+from instrument_base import InstrumentBase as _InstrumentBase
 
 class SRS_SR830(_InstrumentBase):
-    def __init__(self,
-                 GPIB_Address=8, GPIB_Device=0, RemoteOnly=False, ResourceName=None, logFile=None):
+    def __init__(self, GPIB_Address: int=8, GPIB_Device: int=0, RemoteOnly: bool=False,
+                 ResourceName: str | None=None, logFile: str | None=None) -> None:
         if ResourceName is None:
             ResourceName = 'GPIB%d::%d::INSTR' % (GPIB_Device, GPIB_Address)
         super().__init__(ResourceName, logFile)
@@ -25,14 +13,14 @@ class SRS_SR830(_InstrumentBase):
         self.write('OUTX 1')  # GPIB Mode
         self.RemoteOnly(RemoteOnly)
 
-    def RemoteOnly(self, rO=True):
+    def RemoteOnly(self, rO: bool=True) -> None:
         if rO:
             self.write('OVRM 0')
         else:
             self.write('OVRM 1')
 
     @property
-    def TC(self):
+    def TC(self) -> float:
         '''
         Sets or return the Filter Time Constant
         setted values are rounded to aviable hardware value.
@@ -60,24 +48,23 @@ class SRS_SR830(_InstrumentBase):
         # '18' = 10 ks
         # '19' = 30 ks
         tc_i = self.query_int('OFLT?')
-        bins = [10E-6, 30E-6, 100E-6, 300E-6,
-                1E-3, 3E-3, 10E-3, 30E-3, 100E-3, 300E-3,
-                1, 3, 10, 30, 100, 300,
-                1E3, 3E3, 10E3, 30E3]
+        bins = [10E-6, 30E-6, 100E-6, 300E-6, 1E-3, 3E-3, 10E-3,
+                30E-3, 100E-3, 300E-3, 1.0, 3.0, 10.0, 30.0,
+                100.0, 300.0, 1E3, 3E3, 10E3, 30E3]
         return bins[tc_i]
 
     @TC.setter
-    def TC(self, tc):
+    def TC(self, tc: float) -> None:
         tc = _np.abs(tc)
-        bins = [10E-6, 30E-6, 100E-6, 300E-6,
-                1E-3, 3E-3, 10E-3, 30E-3, 100E-3, 300E-3,
-                1, 3, 10, 30, 100, 300,
-                1E3, 3E3, 10E3, 30E3]
+        bins = [10E-6, 30E-6, 100E-6, 300E-6, 1E-3, 3E-3, 10E-3,
+                30E-3, 100E-3, 300E-3, 1.0, 3.0, 10.0, 30.0,
+                100.0, 300.0, 1E3, 3E3, 10E3, 30E3]
         tc_i = _np.abs(_np.array(bins) - tc).argmin()
         self.write('OFLT %d' % tc_i)
 
+
     @property
-    def SEN(self):
+    def SEN(self) -> float:
         '''
         Sets or return the Full Scale Sensitivity
         setted values rounded to aviable hardware value.
@@ -113,13 +100,10 @@ class SRS_SR830(_InstrumentBase):
         #  '25' = 500 mV   500 nA
         #  '26' = 1 V      1 uA
         sen_i = self.query_int('SENS?')
-        vSen = [2E-15, 5E-15, 10E-15, 20E-15,
-                50E-15, 100E-15, 200E-15, 500E-15,
-                1E-12, 2E-12, 5E-12, 10E-12, 20E-12,
-                50E-12, 100E-12, 200E-12, 500E-12,
-                1E-9, 2E-9, 5E-9, 10E-9, 20E-9,
-                50E-9, 100E-9, 200E-9, 500E-9,
-                1E-6][sen_i]
+        vSen = [2E-15, 5E-15, 10E-15, 20E-15, 50E-15, 100E-15, 200E-15,
+                500E-15, 1E-12, 2E-12, 5E-12, 10E-12, 20E-12, 50E-12,
+                100E-12, 200E-12, 500E-12, 1E-9, 2E-9, 5E-9, 10E-9,
+                20E-9, 50E-9, 100E-9, 200E-9, 500E-9, 1E-6][sen_i]
         inputMode = self.query('ISRC?')
         if inputMode in ['0', '1']:
             # Voltage mode
@@ -127,36 +111,34 @@ class SRS_SR830(_InstrumentBase):
         return vSen
 
     @SEN.setter
-    def SEN(self, vSen):
+    def SEN(self, vSen: float) -> None:
         vSen = _np.abs(vSen)
         if self.query('ISRC?') in ['0', '1']:
             # Voltage mode
             vSen *= 1.0E-6
-        bins = [2E-15, 5E-15, 10E-15, 20E-15,
-                50E-15, 100E-15, 200E-15, 500E-15,
-                1E-12, 2E-12, 5E-12, 10E-12, 20E-12,
-                50E-12, 100E-12, 200E-12, 500E-12,
-                1E-9, 2E-9, 5E-9, 10E-9, 20E-9,
-                50E-9, 100E-9, 200E-9, 500E-9,
-                1E-6]
+        bins = [2E-15, 5E-15, 10E-15, 20E-15, 50E-15, 100E-15, 200E-15,
+                500E-15, 1E-12, 2E-12, 5E-12, 10E-12, 20E-12, 50E-12,
+                100E-12, 200E-12, 500E-12, 1E-9, 2E-9, 5E-9, 10E-9,
+                20E-9, 50E-9, 100E-9, 200E-9, 500E-9, 1E-6]
         sen_i = _np.abs(_np.array(bins) - vSen).argmin()
         self.write('SENS %d' % sen_i)
 
-    def decrease_sensitivity(self):
+    def decrease_sensitivity(self) -> None:
         sen_i = self.query_int('SENS?')
         if sen_i == 26:
             self._log('decrease_sensitivity ERR ', 'Sensivity already at minimum! Changing nothing.')
         else:
             self.write('SENS %d' % sen_i + 1)
 
-    def increase_sensitivity(self):
+    def increase_sensitivity(self) -> None:
         sen_i = self.query_int('SENS?')
         if sen_i == 0:
             self._log('increase_sensitivity ERR ', 'Sensivity already at maximum! Changing nothing.')
         else:
             self.write('SENS %d' % sen_i - 1)
-            
-    def FilterSlope(self, sl):
+
+
+    def FilterSlope(self, sl: str) -> None:
         '''
         Set the output filter slope
         Usage :
@@ -172,7 +154,8 @@ class SRS_SR830(_InstrumentBase):
         else:
             self._log('ERR ', 'Wrong Slope Code')
 
-    def InputMode(self, imode):
+
+    def InputMode(self, imode: str) -> None:
         '''
         Current/Voltage mode Input Selector
         Usage :
@@ -188,70 +171,83 @@ class SRS_SR830(_InstrumentBase):
         else:
             self._log('ERR ', 'Wrong Input Mode Code')
 
-    def Sync(self, Sy=True):
+
+    def Sync(self, Sy: bool=True) -> None:
         '''Enable or disable Synchonous time constant'''
         if Sy:
             self.write('SYNC 1')
         else:
             self.write('SYNC 0')
 
-    def setOscilatorFreq(self, freq):
+
+    def setOscilatorFreq(self, freq: int | float) -> None:
         '''Set the internal Oscilator Frequency'''
         self.write('FREQ %0.6f' % freq)
 
-    def setOscilatorAmp(self, amp):
+
+    def setOscilatorAmp(self, amp: int | float) -> None:
         '''Set the internal Oscilator Amplitude'''
         self.write('SLVL %0.6f' % amp)
 
-    def setRefPhase(self, ph):
+
+    def setRefPhase(self, ph: int | float) -> None:
         '''Set the phase reference'''
         self.write('PHAS %0.6f' % ph)
 
-    def getRefPhase(self):
+
+    def getRefPhase(self) -> float:
         '''Get the programed phase reference'''
         return self.query_float('PHAS?')
+    
 
-    def ConfigureInput(self,
-                       InDev='FET', Coupling='AC',
-                       Ground='GND', AcGain='Auto'):
+    def ConfigureInput(self, InDev: str='FET', Coupling: str='AC',
+                       Ground: str='GND', AcGain: str='Auto') -> None:
         # TODO Implement
         pass
 
-    # Some functions I added myself, need to upate them as they are slowww
-    def getX(self):
+
+    # Some functions I added myself, but individually querying the X/Y channels is slowww
+    def getX(self) -> float:
         return self.query_float('OUTP? 1')
 
-    def getY(self):
+    def getY(self) -> float:
         return self.query_float('OUTP? 2')
     
-    def getXY(self):
+    def getXY(self) -> tuple[float, float]:
         X, Y = self.query('SNAP?1,2').split(',')
         return float(X), float(Y)
+    
 
     @property
-    def Magnitude(self):
+    def Magnitude(self) -> float:
         return self.query_float('OUTP? 3')
 
+
     @property
-    def Phase(self):
+    def Phase(self) -> float:
         return self.query_float('OUTP? 4')
 
+
     @property
-    def Freq(self):
+    def Freq(self) -> float:
         return self.query_float('FREQ?')
 
+
     @property
-    def AUX_In_1(self):
+    def AUX_In_1(self) -> float:
         return self.query_float('OAUX?1')
 
+
     @property
-    def AUX_In_2(self):
+    def AUX_In_2(self) -> float:
         return self.query_float('OAUX?2')
 
-    @property
-    def AUX_In_3(self):
-        return self.query_float('OAUX?3')
 
     @property
-    def AUX_In_4(self):
+    def AUX_In_3(self) -> float:
+        return self.query_float('OAUX?3')
+
+
+    @property
+    def AUX_In_4(self) -> float:
         return self.query_float('OAUX?4')

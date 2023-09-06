@@ -3,26 +3,29 @@ import datetime
 import os
 import numpy as np
 import time
+from typing import Any
 
-def findResource(search_string, filter_string='', query_string='*IDN?', open_delay=2, **kwargs):
+def findResource(search_string: str, filter_string: str='', query_string: str='*IDN?',
+                 open_delay: float=2.0, **kwargs) -> str | None:
+    """Helps you look for a particular VISA instrument. You can cycle through all available VISA
+    resources and initialise them (minimise the resources you initialise with filter_string), query
+    them for their identity with query_string, and look for the search_string in the identity.
+    Return the resource identity string if there is a match. 
     
+    Args:
+        search_string (str): If this substring is in the the resource's identity string, return
+        the identity string.
+        filter_string (str, optional): If this substring is in the resource name, query it for
+        its identity. Defaults to ''.
+        query_string (str, optional): The command to query the instrument for its identity.
+        Defaults to '*IDN?'.
+        open_delay (float, optional): Delay after the the resource is opened before the identity
+        query is made. Defaults to 2.0.
 
-    """Helps you look for a particular VISA instrument. You can cycle through all visable VISA
-    resources and initialise them (initialise only the resources you want with filter_string), query
-    them for their identity (can specify different identity commands), and look for the
-    search_string in the returned identity.
-    
-    Note: Do not use for the HP 8673G as I don't know its HP-IB query command. LMK if you do.
-    
-    Parameters:
-    search_string (str): Filter resources'  The substring that you want to search for when you query resources for
-    their identity.
-    filter_string (str): The substring that you want your resources' names to have.
-    query_string (str): The command you want to send to query a resource for its identity.
-    open_delay (float): Delay after the the resource is opned before the identity query is made.
-    
-    Returns: None | ResourceManager object
+    Returns:
+        str | None: Resource name of the searched instrument. If instrument isn't found, None is returned
     """
+
     if os.name == 'nt':
         rm = pyvisa.ResourceManager()
     else:
@@ -38,6 +41,7 @@ def findResource(search_string, filter_string='', query_string='*IDN?', open_del
             except:
                 pass
     return None
+
 
 class ValuesFormat(object):
     def __init__(self):
@@ -62,11 +66,9 @@ class ValuesFormat(object):
 
         
 class InstrumentBase(object):
-    '''
-    Base class for all instrument classes in spinlab
-    '''
+    """A base class for all instrument classes in Spinlab"""
 
-    def __init__(self, ResourceName, logFile=None, **kargs):
+    def __init__(self, ResourceName: str, logFile: str | None=None, **kargs) -> None:
         if os.name == 'nt':
             rm = pyvisa.ResourceManager()
         else:
@@ -83,14 +85,14 @@ class InstrumentBase(object):
         self._logWrite('OPEN_')
         self.values_format = ValuesFormat()
 
-    def __del__(self):
+    def __del__(self) -> None:
         self._logWrite('CLOSE')
         self.VI.close()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%s : %s" % ('spinlab.instrument', self._IDN)
 
-    def _logWrite(self, action, value=''):
+    def _logWrite(self, action: str, value: str='') -> None:
         if self._logFile is not None:
             with open(self._logFile, 'a') as log:
                 timestamp = datetime.datetime.utcnow()
@@ -98,23 +100,23 @@ class InstrumentBase(object):
                           (timestamp, self._IDN, action, repr(value)))
     _log = _logWrite
 
-    def write(self, command):
+    def write(self, command: str) -> None:
         self._logWrite('write', command)
         self.VI.write(command)
 
-    def read(self):
+    def read(self) -> str:
         self._logWrite('read ')
         returnR = self.VI.read()
         self._logWrite('resp ', returnR)
         return returnR
     
-    def query(self, command):
+    def query(self, command: str) -> str:
         self._logWrite('query', command)
         returnQ = self.VI.query(command)
         self._logWrite('resp ', returnQ)
         return returnQ
 
-    def query_type(self, command, type_caster):
+    def query_type(self, command: str, type_caster: type) -> Any:
         try:
             returnQ = self.query(command)
             return type_caster(returnQ)
@@ -123,13 +125,13 @@ class InstrumentBase(object):
             returnQ = self.query(command)
             return type_caster(returnQ)
 
-    def query_int(self, command):
+    def query_int(self, command: str) -> int:
         return self.query_type(command, int)
 
-    def query_float(self, command):
+    def query_float(self, command: str) -> float:
         return self.query_type(command, float)
 
-    def query_values(self, command):
+    def query_values(self, command: str) -> Any:
         # NOTE: self.values_format should be set to the adequate format
         if self.values_format.is_binary:
             read_term = self.VI.read_termination
@@ -154,11 +156,9 @@ class InstrumentBase(object):
     
     
 class InstrumentChild(object):
-    '''
-    Base class for instrument subclasses in magdynlab
-    '''
+    '''Base class for instrument subclasses in Spinlab'''
 
-    def __init__(self, parent):
+    def __init__(self, parent) -> None:
         self.parent = parent
         self._logWrite = parent._logWrite
         self._log = parent._log
@@ -170,7 +170,7 @@ class InstrumentChild(object):
         self.query_values = parent.query_values
         self._IDN = parent._IDN + ' %s' % self.__class__.__name__
 
-    def __del__(self):
+    def __del__(self) -> None:
         del self.parent
         del self._logWrite
         del self._log
@@ -181,5 +181,5 @@ class InstrumentChild(object):
         del self.query_float
         del self.query_values
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%s : %s" % ('spinlab.instrument', self._IDN)
