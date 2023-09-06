@@ -4,6 +4,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
+from pandas import DataFrame
 
 # Let's import our instrument classes
 from hp_8673g import HP_CWG
@@ -62,7 +63,7 @@ class Experiment():
                     timestamp = datetime.utcnow()
                     log.write('%s %s : %s \n' % (timestamp, action, repr(value)))
     _log = _logWrite
-       
+    
 
     def _welcome(self):
         print("Welcome to the FMR Experiment!")
@@ -72,17 +73,15 @@ class Experiment():
     def printParameters(self):
         parameters = {
             'Log File': self._logFile,
-            
-            'SG RF Output Level': self.SG.level,
-            'LIA Time Constant': self.LIA.TC,
-            'LIA Sensivity': self.sen,
-            'Sensivity Delay (s)': self.sen_delay,
-            'Read Repetitions': self.read_reps,
-            'Read Repetition Delay': self.rep_delay,
-            'Repetition Averaging Function': self.avg_func,
-            'Read Delay': self.read_delay,
-            'From 0 Delay (s)': self.from0delay
-            }
+            'SG RF Output Level (dB)': self.SG.level,
+            'LIA Time Constant (s)': self.LIA.TC,
+            'LIA Sensivity (V)': self.sensitivity,
+            'Sensivity Change Delay (s)': self.sensitivityChangeDelay,
+            'Read Repetitions': self.readReps,
+            'Delay Between Repetitions (s)': self.betweenRepDelay,
+            'Repetition Averaging Function': self.repAveragingFunction.__name__,
+            'Field per Ampere (Oe/A)': self.HperI,
+            'Maximum Field Change Rate (Oe/s)': self.MaxHRate}
         for key, val in parameters.items():
             print(key, ':\t', val)
 
