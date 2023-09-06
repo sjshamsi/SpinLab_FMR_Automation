@@ -4,9 +4,9 @@ import os
 import numpy as np
 import time
 
-__all__ = ['InstrumentBase']
-
 def findResource(search_string, filter_string='', query_string='*IDN?', open_delay=2, **kwargs):
+    
+
     """Helps you look for a particular VISA instrument. You can cycle through all visable VISA
     resources and initialise them (initialise only the resources you want with filter_string), query
     them for their identity (can specify different identity commands), and look for the

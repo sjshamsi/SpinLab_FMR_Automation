@@ -11,7 +11,7 @@
 # Make documentation
 
 import numpy as _np
-from instrument_base import InstrumentBase as _InstrumentBase
+from instrumentBase import InstrumentBase as _InstrumentBase
 
 class SRS_SR830(_InstrumentBase):
     def __init__(self,

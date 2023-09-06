@@ -1,4 +1,4 @@
-from instrument_base import InstrumentBase as _InstrumentBase
+from instrumentBase import InstrumentBase as _InstrumentBase
 
 class KEPCO_BOP(_InstrumentBase):
     def __init__(self, GPIB_Address=6, GPIB_Device=0, ResourceName=None, logFile=None):

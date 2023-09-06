@@ -123,7 +123,9 @@ class Experiment():
         if from0delay is None:
             from0delay = self.from0delay
         return from0delay
-
+    
+    
+    def sweepField(self, frequency, fields, saveDirectory)
 
     def sweep_field(self, frequency, fields, save_dir, livefig=True, savefig=True, closefig=False,
                     file_prefix='', sen=0.002, sen_delay=None, read_reps=None, rep_delay=None,

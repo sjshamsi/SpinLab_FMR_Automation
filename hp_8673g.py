@@ -1,4 +1,4 @@
-from instrument_base import InstrumentBase as _InstrumentBase
+from instrumentBase import InstrumentBase as _InstrumentBase
 
 class HP_CWG(_InstrumentBase):
     def __init__(self, GPIB_Address=15, GPIB_Device=0, ResourceName=None, logFile=None):
