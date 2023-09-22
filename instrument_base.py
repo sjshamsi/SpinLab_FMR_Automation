@@ -44,13 +44,16 @@ def findResource(search_string: str, filter_string: str='', query_string: str='*
 
 
 class ValuesFormat(object):
-    def __init__(self):
-        # Info: 
-        #  http://pyvisa.readthedocs.io/en/stable/rvalues.html
-        #   query_binary_values
-        #   query_ascii_values
-        # datatype info:
-        #  https://docs.python.org/3/library/struct.html#format-characters
+    """A class holding various formatting parameters for an instrument.
+    Learn more about what these are and why they're necessary here:
+    http://pyvisa.readthedocs.io/en/stable/rvalues.html
+        query_binary_values
+        query_ascii_values
+        datatype info:
+        https://docs.python.org/3/library/struct.html#format-characters
+    """
+
+    def __init__(self) -> None:
         self.is_binary = True
         self.container = np.array
         self.delay = None
@@ -66,9 +69,16 @@ class ValuesFormat(object):
 
         
 class InstrumentBase(object):
-    """A base class for all instrument classes in Spinlab"""
+    """A base class for all instrument classes in Spinlab."""
 
     def __init__(self, ResourceName: str, logFile: str | None=None, **kargs) -> None:
+        """Initialise common instrument infrastructure like logfiles, Value formats, etc.
+
+        Args:
+            ResourceName (str): The resource name string for your instrument.
+            logFile (str | None, optional): Path to the logfile to use. Defaults to None.
+        """
+
         if os.name == 'nt':
             rm = pyvisa.ResourceManager()
         else:
@@ -93,6 +103,14 @@ class InstrumentBase(object):
         return "%s : %s" % ('spinlab.instrument', self._IDN)
 
     def _logWrite(self, action: str, value: str='') -> None:
+        """Put a single write/read/query command into the log file.
+
+        Args:
+            action (str): Usually the command sent to the instrument.
+            value (str, optional): Usually the instrument response to the command.
+            Defaults to ''.
+        """
+
         if self._logFile is not None:
             with open(self._logFile, 'a') as log:
                 timestamp = datetime.datetime.utcnow()
@@ -100,23 +118,50 @@ class InstrumentBase(object):
                           (timestamp, self._IDN, action, repr(value)))
     _log = _logWrite
 
+
     def write(self, command: str) -> None:
+        """Simply the pyvisa write command but with a logging step.
+
+        Args:
+            command (str): Whatever command you'd like to write.
+        """
+        
         self._logWrite('write', command)
         self.VI.write(command)
 
     def read(self) -> str:
+        """Simply the pyvisa read command but with a logging step.
+
+        Returns:
+            str: The response form the instrument.
+        """
         self._logWrite('read ')
         returnR = self.VI.read()
         self._logWrite('resp ', returnR)
         return returnR
-    
+
     def query(self, command: str) -> str:
+        """Simply the pyvisa query command but with a logging step.
+
+        Returns:
+            str: The response form the instrument.
+        """
         self._logWrite('query', command)
         returnQ = self.VI.query(command)
         self._logWrite('resp ', returnQ)
         return returnQ
 
     def query_type(self, command: str, type_caster: type) -> Any:
+        """Casts the query response from the instrument into a specific type.
+
+        Args:
+            command (str): The command you want to query with.
+            type_caster (type): The Type in which you'd like to cast the instrument resposnse.
+
+        Returns:
+            Any: The instrument response casted into the provided Type.
+        """
+
         try:
             returnQ = self.query(command)
             return type_caster(returnQ)
@@ -126,12 +171,39 @@ class InstrumentBase(object):
             return type_caster(returnQ)
 
     def query_int(self, command: str) -> int:
+        """Query the instrument and get a response casted in int.
+
+        Args:
+            command (str): The command you want to query with.
+
+        Returns:
+            int: The instrument response casted into an int.
+        """
+
         return self.query_type(command, int)
 
     def query_float(self, command: str) -> float:
+        """Query the instrument and get a response casted in float.
+
+        Args:
+            command (str): The command you want to query with.
+
+        Returns:
+            int: The instrument response casted into a float.
+        """
+        
         return self.query_type(command, float)
 
     def query_values(self, command: str) -> Any:
+        """_summary_
+
+        Args:
+            command (str): _description_
+
+        Returns:
+            Any: _description_
+        """
+        
         # NOTE: self.values_format should be set to the adequate format
         if self.values_format.is_binary:
             read_term = self.VI.read_termination
