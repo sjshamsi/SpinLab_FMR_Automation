@@ -16,7 +16,7 @@ plt.style.use('seaborn-v0_8')
 plt.style.use('seaborn-v0_8-colorblind')
 
 class Experiment():
-    def __init__(self, logFilePath=None):
+    def __init__(self, logFilePath=None) -> None:
         if logFilePath is None:
             if not os.path.isdir(os.path.abspath('./Experiment_Logs')):
                 os.mkdir(os.path.abspath('./Experiment_Logs'))
